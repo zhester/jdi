@@ -398,6 +398,7 @@ each key.
   keys (wherein a particular validation check might fail). An example of a
   field with an errors declaration follows:
 
+    ```
     "keys" : [
         "field",
         "required",
@@ -422,6 +423,275 @@ each key.
             }
         ]
     ]
+    ```
 
-###### ZIH - Left off at payload.info documentation
+### `payload.info`
+
+The `info` field that is present in all data responses is a common structure for
+including additional information about the type of data contained in the
+response. The idea is to keep details of reference and language on the server,
+and allow the client to act primarily as a UI generator abstract of the
+details of the content it is helping the user to maintain.
+
+The following shows the `info` field with a typical `meta` structure for a
+`recordset` response:
+
+    {
+        "status"  : 0,
+        "message" : "Ok",
+        "query"   : { "action" : "index" },
+        "layout"  : "recordset",
+        "payload" : {
+            "info"   : {
+                "meta" : {
+                    "type_id"    : 2,
+                    "type_name"  : "people",
+                    "type_nouns" : [ "person", "people" ]
+                }
+            },
+            "fields" : [
+                "id",
+                "cid",
+                "pid",
+                "name",
+                "color"
+            ],
+            "records" : [
+                [ 1, 2, "adam",    "Adam",    "red"   ],
+                [ 2, 2, "baker",   "Baker",   "green" ],
+                [ 3, 2, "charlie", "Charlie", "blue"  ]
+            ]
+        }
+    }
+
+#### `payload.info.meta`
+
+The `meta` info field provides descriptive information about the record or
+records in the response. The `meta` field is typically included in `record`,
+`recordset`, and `schema` responses.
+
+The following describes the fields within the `meta` field.
+
+- `type_id`: An ID number that is unique across all types in the application
+- `type_name`: A string that is unique across all types in the application
+- `type_nouns`: See the "Common Nouns" section below.
+
+#### `payload.info.parent` and `payload.info.range`
+
+In the case of `recordset` responses, the host may include `parent` and
+`range` items.
+
+    "info" : {
+        "meta" : {
+            "type_id"    : 2,
+            "type_name"  : "people",
+            "type_nouns" : [ "person", "people" ]
+        },
+        "parent" : {
+            "type_id"    : 1,
+            "type_name"  : "mammals",
+            "type_nouns" : [ "mammal", "mammals" ]
+            "id"         : 31,
+            "pid"        : "primates",
+            "name"       : "Primates",
+            "parent"     : null
+        },
+        "range" : {
+            "offset"  : 0,
+            "length"  : 3,
+            "total"   : 3,
+            "maximum" : 64
+        }
+    }
+
+#### `payload.info.parent`
+
+The `parent` item describes the parent record of the records. This is similar
+to, but slightly different from the `meta` item since this does not describe
+the _type_ of the parent only. It also describes the actual record contents
+enough to be useful to the user.
+
+- `type_id`: An ID number that is unique across all types in the application
+- `type_name`: A string that is unique across all types in the application
+- `type_nouns`: See: "Common Nouns" section below
+- `id`: The value of the parent record's unique numeric ID field
+- `pid`: The value of the parent record's unique string ID field
+- `name`: The value of the human-readable identifier of the parent record
+- `parent`: Optionally nested parent-of-parent item. Nesting is allowed all
+  the way to the "root" of the hierarchy. The structure is identical to that
+  of the records' immediate parent.
+
+#### `payload.info.range`
+
+The `range` item is intended to provide partial lists of all records in a set.
+This should give the client the ability to "page" through records in a very
+large list by iteratively requesting additional record sets.
+
+- `offset`: The offset into the stored records matching the current query
+- `length`: The number of records in the current record set
+- `total`: The total number of stored records matching the current query
+- `maximum`: The host resource's limit on how many records may be sent in a
+  single recordset response.
+
+Responses to Mutation Requests
+------------------------------
+
+Requests for mutating remote data (performed using POST using JSON message
+bodies), receive fairly simple responses indicating success or failure of the
+request. The payload will usually contain a copy of the record created by the
+mutating request (for possible verification, and the client can fetch the
+record's ID when inserting).
+
+### Insertion
+
+    {
+        "status"  : 0,
+        "message" : "Ok",
+        "query"   : { "action" : "insert" },
+        "layout"  : "record",
+        "payload" : {
+            "info"   : {},
+            "fields" : [
+                "id",
+                "name",
+                "color"
+            ],
+            "values" : [
+                42,
+                "John Doe",
+                "green"
+            ]
+        }
+    }
+
+### Updating
+
+    {
+        "status"  : 2,
+        "message" : "No Change",
+        "query"   : { "action" : "update" },
+        "layout"  : "record",
+        "payload" : {
+            "info"   : {},
+            "fields" : [
+                "id",
+                "name",
+                "color"
+            ],
+            "values" : [
+                42,
+                "John Doe",
+                "green"
+            ]
+        }
+    }
+
+Of course, if the request did change a remote value, the status would be `0`
+to indicate things were succesfully changed.
+
+### Deletion
+
+    {
+        "status"  : 0,
+        "message" : "Ok",
+        "query"   : { "action" : "delete" },
+        "layout"  : "record",
+        "payload" : {
+            "info"   : {},
+            "fields" : [
+                "id",
+                "name",
+                "color"
+            ],
+            "values" : [
+                42,
+                "John Doe",
+                "green"
+            ]
+        }
+    }
+
+JDI over HTTP
+-------------
+
+JDI is typically used to communicate between client and server applications
+over HTTP. When using JDI over HTTP, there are a few conventions that can be
+established to simplify the development of both applications.
+
+### JDI Requests are Intended for Mutation
+
+Most of the time, a client application will retrieve information in JDI
+responses by initiating a GET request to the server. HTTP GET requests provide
+all the expressive capability necessary to provide the server resource with
+enough information to fulfill the request. For example, a client that expects
+a JDI response from a server will normally make data retrieval requests using
+a structured query in the URI:
+
+    http://example.com/?action=greet
+
+Therefore, the assumed convention is that a structured JDI request is only
+used when a large amount and diversity of data needs to be sent to the server.
+These requests are, generally, used to mutate data on the server.
+
+HTTP conventions (not standards) provide for mutation requests via the POST
+and PUT request methods. Sending JDI over HTTP should be for the purposes of
+mutating information. Therefore, the contents of the request should, by
+convention, be sent using the POST method.
+
+The body of the POST request should be the JDI request message. The client
+should also identify the Content-Type of the request as application/json to
+allow server resources to distinguish between varying request formats for the
+same application.
+
+An example HTTP POST request may look like the following:
+
+    POST /?action=greet HTTP/1.1
+    Host: example.com
+    Content-Type: application/json; charset=utf-8
+    Content-Length: 72
+
+    {"context":{"action":"greet"},"layout":"string","payload":"Hello World"}
+
+### JDI Responses are Intended for Retrieval
+
+This is pretty much the entire purpose for defining the interchange format and
+schemas. Highly organized data can be fetched over HTTP in a consistent and
+type-safe way without asking either end to build complex parsers and handling
+mechanisms. The server doesn't incur the overhead of extremely complex (and
+repetitive) document generation, and the client can use the information from
+the server with more faith that the data is correctly formatted, and ready for
+display in the UI.
+
+Sending Human Words
+-------------------
+
+This protocol deals with sending words based on grammar rule invocation
+frequency. If a single, all-lowercase word is sent, it is assumed to follow
+the mose frequently-invoked rules for pluralization, capitalization, articles,
+etc.
+
+### Common Nouns
+
+For the set of all common nouns, there is a very large number of rules to
+produce the plural form, and proper "title case." The client relies on the
+host resource to deal with those complexities (hopefully stored with the data
+and/or its definitions).
+
+When sending a common noun, a list of one or more words is sent. The list
+considers the unspecified values as trivial to derive from the specified
+values. For common nouns, the first word in the list is the normal case,
+singular form.
+
+The second word in the list is optional if the noun can be made plural by
+appending a single "s" character. If not, the second word must specify the
+plural form of the first.
+
+The third word in the list is optional if the noun can be converted to "title
+case" by the simple translation: `s/\b([a-z])/\U\1/g` (converting the first
+character in each word to upper case). If not, the third word must specify the
+singular, title case form of the word.
+
+The fourth word in the list is optional if the noun can be made plural by
+appending a single "s" character to the third word in the list. If not, the
+fourth word must specify the title case, plural form of the word.
 
