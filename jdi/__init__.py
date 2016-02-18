@@ -112,8 +112,34 @@ class Message( object ):
 
         # Set base message fields.
         self._fields = {}
-        self._declare_field( 'layout' )
-        self._declare_field( 'payload', compact = True )
+        self._declare_field( 'layout', default = 'null' )
+        self._declare_field( 'payload' )
+
+
+    #=========================================================================
+    def __contains__( self, key ):
+        """
+        Tests the message for field membership.
+        Note: This is sensitive to the `compact` flag.
+
+        @param key The name of the root key for which to test
+        @return    True if the root key should be present in the message
+        """
+
+        # Key is not valid for this message.
+        if key not in self._fields:
+            return False
+
+        # The message is not compact.
+        if self.compact == False:
+            return True
+
+        # The key is enabled for compact messages.
+        if self._fields[ key ].compact == True:
+            return True
+
+        # Message is compact, and the key is not enabled for compact messages.
+        return False
 
 
     #=========================================================================
@@ -129,6 +155,25 @@ class Message( object ):
         except AttributeError:
             raise KeyError( key )
         return value
+
+
+    #=========================================================================
+    def __iter__( self ):
+        """
+        Supports iteration to allow the message to act like a dictionary.
+        Note: This is sensitive to the `compact` flag.
+
+        @return The iterator of the message's root keys.
+        """
+
+        # Scan through all message fields.
+        for key in self._fields.keys():
+
+            # Ensure this key is available for the message.
+            if self.__contains__( key ):
+
+                # Allow this field to be iterated.
+                yield key
 
 
     #=========================================================================
@@ -161,11 +206,38 @@ class Message( object ):
         """
         Attempts to auto-detect the layout of a message given a payload.
 
+        TODO: Add type checking to the payload inspection.
+
         @param payload The payload value
         """
 
         # Convert data type to JDI layout string.
-        return cls.type2layout.get( type( payload ), None )
+        layout = cls.type2layout.get( type( payload ), None )
+
+        # Check hash layouts for known fields.
+        if layout == 'hash':
+
+            # documents have type and content.
+            if ( 'type' in payload ) and ( 'content' in payload ):
+                layout = 'document'
+
+            # records and recordsets have lists of fields.
+            elif 'fields' in payload:
+
+                # records have lists of values.
+                if 'values' in payload:
+                    layout = 'record'
+
+                # recordsets have lists of value lists.
+                elif 'records' in payload:
+                    layout = 'recordset'
+
+            # schemas have keys and lists of field lists.
+            elif ( 'keys' in payload ) and ( 'values' in payload ):
+                layout = 'schema'
+
+        # Return the layout we detected.
+        return layout
 
 
     #=========================================================================
@@ -182,21 +254,16 @@ class Message( object ):
         # Scan through declared fields.
         for name, spec in self._fields.items():
 
-            # Fetch the value of this field.
-            data = getattr( self, name )
+            # Ensure this field should be present in the message.
+            if self.__contains__( name ):
 
-            # Use all fields if the message is not being compacted.
-            # If the message is being compacted:
-            #     See if the field should be included in compact messages
-            #     ... and the field's data is not empty/null.
-            if  ( self.compact == False )                                   \
-                or                                                          \
-                (                                                           \
-                    ( self.compact == True )                                \
-                    and                                                     \
-                    ( ( spec.compact == True ) and ( data is not None ) )   \
-                ):
+                # Fetch the value of this field.
+                data = getattr( self, name )
+
+                # Set the value in the field in the message contents.
                 content[ name ] = data
+
+        # Return the message contents.
         return content
 
 
@@ -229,7 +296,7 @@ class Request( Message ):
         """
         Initializes a Request object.
         """
-        super( request, self ).__init__( *args, **kwargs )
+        super( Request, self ).__init__( *args, **kwargs )
         self._declare_field( 'context' )
 
 
@@ -245,9 +312,15 @@ class Response( Message ):
         """
         Initializes a Response object.
         """
-        super( response, self ).__init__( *args, **kwargs )
-        self._declare_field( 'status', default = 0, compact = True )
-        self._declare_field( 'message' )
+        super( Response, self ).__init__( *args, **kwargs )
+        self._declare_field( 'status', default = 0 )
+        self._declare_field(
+            'message',
+            default = self.status_message.get(
+                self._init.get( 'status', 0 ),
+                'Ok'
+            )
+        )
 
 
 

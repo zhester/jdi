@@ -141,11 +141,75 @@ class JDITests( unittest.TestCase ):
         Tests payload layout detection.
         """
         dl = jdi.Message.detect_layout
-        self.assertEqual( dl( None ),                'null'    )
-        self.assertEqual( dl( True ),                'boolean' )
-        self.assertEqual( dl( 42 ),                  'integer' )
-        self.assertEqual( dl( 3.14159 ),             'double'  )
-        self.assertEqual( dl( 'Hello World' ),       'string'  )
-        self.assertEqual( dl( [ 1, 2 ] ),            'array'   )
-        self.assertEqual( dl( { 'a' : 1, 'b' : 2 } ), 'hash'   )
+
+        self.assertEqual( dl( None ),                 'null'    )
+        self.assertEqual( dl( True ),                 'boolean' )
+        self.assertEqual( dl( 42 ),                   'integer' )
+        self.assertEqual( dl( 3.14159 ),              'double'  )
+        self.assertEqual( dl( 'Hello World' ),        'string'  )
+        self.assertEqual( dl( [ 1, 2 ] ),             'array'   )
+        self.assertEqual( dl( { 'a' : 1, 'b' : 2 } ), 'hash'    )
+
+        self.assertEqual( dl( { 'type' : '', 'content' : '' } ), 'document' )
+        self.assertEqual( dl( { 'fields' : [], 'values' : [] } ), 'record' )
+        self.assertEqual( dl( { 'fields' : [], 'records' : [] } ), 'recordset' )
+        self.assertEqual( dl( { 'keys' : [], 'values' : [] } ), 'schema' )
+
+
+    #=========================================================================
+    def test_message_compact_in( self ):
+        """
+        Tests compact message input.
+        """
+        empty_base = {
+            'layout'  : 'null',
+            'payload' : None
+        }
+        empty_ok = {
+            'status'  : 0,
+            'message' : 'Ok',
+            'layout'  : 'null',
+            'payload' : None
+        }
+        empty_query = {
+            'context' : None,
+            'layout'  : 'null',
+            'payload' : None
+        }
+
+        message = jdi.Message( '{}' )
+        self.assertEqual( message.to_json(), empty_base )
+
+        request = jdi.Request( '{}' )
+        self.assertEqual( request.to_json(), empty_query )
+
+        response = jdi.Response( '{}' )
+        self.assertEqual( response.to_json(), empty_ok )
+
+
+    #=========================================================================
+    def test_message_compact_out( self ):
+        """
+        Tests message compaction output.
+        """
+        empty_ok = {
+            'status'  : 0,
+            'message' : 'Ok',
+            'layout'  : 'null',
+            'payload' : None
+        }
+        empty_query = {
+            'context' : None,
+            'layout'  : 'null',
+            'payload' : None
+        }
+
+        message = jdi.Message( empty_ok, compact = True )
+        self.assertEqual( str( message ), '{}' )
+
+        request = jdi.Request( empty_query, compact = True )
+        self.assertEqual( str( request ), '{}' )
+
+        response = jdi.Response( empty_ok, compact = True )
+        self.assertEqual( str( response ), '{}' )
 
