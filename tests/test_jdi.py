@@ -108,6 +108,34 @@ class JDITests( unittest.TestCase ):
 
 
     #=========================================================================
+    def test_message_sub_get( self ):
+        """
+        Tests subscript-notation item retrieval.
+        """
+        message = jdi.Message( self.DMSG )
+        self.assertEqual( message[ 'layout' ], self.DMSG[ 'layout' ] )
+        self.assertEqual( message[ 'payload' ], self.DMSG[ 'payload' ] )
+        self.assertRaises( KeyError, lambda: message[ 'fake' ] )
+
+
+    #=========================================================================
+    def test_message_sub_set( self ):
+        """
+        Tests subscript-notation item updating.
+        """
+        message = jdi.Message( self.DMSG )
+        layout  = 'list'
+        payload = [ 1, 2, 3 ]
+        message[ 'layout' ]  = layout
+        message[ 'payload' ] = payload
+        self.assertEqual( message[ 'layout' ], layout )
+        self.assertEqual( message[ 'payload' ], payload )
+        def bad_set( m ):
+            m[ 'fake' ] = 'value'
+        self.assertRaises( KeyError, bad_set, message )
+
+
+    #=========================================================================
     def test_message_detect( self ):
         """
         Tests payload layout detection.

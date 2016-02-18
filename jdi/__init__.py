@@ -140,10 +140,9 @@ class Message( object ):
         @param value The value to set for the requested key
         @return      The value of the requested item
         """
-        try:
-            setattr( self, key, value )
-        except AttributeError:
+        if hasattr( self, key ) == False:
             raise KeyError( key )
+        setattr( self, key, value )
 
 
     #=========================================================================
