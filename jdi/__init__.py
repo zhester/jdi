@@ -251,17 +251,11 @@ class Message( object ):
         # Temporary container to help JSON serialization
         content = {}
 
-        # Scan through declared fields.
-        for name, spec in self._fields.items():
+        # Scan through enabled fields.
+        for key in self:
 
-            # Ensure this field should be present in the message.
-            if self.__contains__( name ):
-
-                # Fetch the value of this field.
-                data = getattr( self, name )
-
-                # Set the value in the field in the message contents.
-                content[ name ] = data
+            # Set the value in the field in the message contents.
+            content[ key ] = getattr( self, key )
 
         # Return the message contents.
         return content
@@ -329,8 +323,7 @@ def _auto_encoder( self, obj ):
     """
     Provides a patched JSON encoder method to allow JSON methods to be used
     without requiring the user to manually specify the correct encoder when
-    serializing JDI messages.  The statements following this monkey-patches
-    the function as the new default method.
+    serializing JDI messages.
 
     Non-trivial objects can implement a quasi-magical method named `to_json()`
     that is used to retrieve an object that is a type that can be serialized
