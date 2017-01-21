@@ -79,16 +79,20 @@ class Message( object ):
 
 
     #=========================================================================
-    def __init__( self, init = None, compact = False ):
+    def __init__( self, init = None, compact = False, debug = False ):
         """
         Initializes a message object.
 
         @param init
         @param compact
+        @param debug
         """
 
         # Set output compaction flag.
         self.compact = compact
+
+        # Set debug flag.
+        self.debug = debug
 
         # Initialize from FLO.
         if hasattr( init, 'read' ):
@@ -197,6 +201,13 @@ class Message( object ):
 
         @return A JSON string representing the message
         """
+        if self.debug == True:
+            return json.dumps(
+                self,
+                sort_keys  = True,
+                indent     = 4,
+                separators = ( ',', ' : ' )
+            )
         return json.dumps( self )
 
 
