@@ -213,3 +213,26 @@ class JDITests( unittest.TestCase ):
         response = jdi.Response( empty_ok, compact = True )
         self.assertEqual( str( response ), '{}' )
 
+
+    #=========================================================================
+    def test_message_pretty( self ):
+        """
+        Tests pretty-printing for debugging purposes.
+        """
+        nested = {
+            'layout'  : 'hash',
+            'payload' : {
+                'string' : 'value',
+                'array'  : [ 1, 2, 3 ],
+                'hash'   : { 'a' : 1, 'b' : 2 }
+            }
+        }
+        message = jdi.Message( nested, debug = True )
+        expected = json.dumps(
+            nested,
+            sort_keys  = True,
+            indent     = 4,
+            separators = ( ',', ' : ' )
+        )
+        self.assertEqual( str( message ), expected )
+
